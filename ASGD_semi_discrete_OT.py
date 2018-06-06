@@ -16,20 +16,22 @@ def coordinate_gradient(eps, nu, v, C, i):
 
     Parameters
     ----------
-        epsilon : float number,
-            Regularization term > 0
-        nu : np.ndarray(nt,),
-            target measure
-        v : np.ndarray(nt,),
-            optimization vector
-        C : np.ndarray(ns, nt),
-            cost matrix
-        i : number int,
-            picked number i
+
+    epsilon : float number,
+        Regularization term > 0
+    nu : np.ndarray(nt,),
+        target measure
+    v : np.ndarray(nt,),
+        optimization vector
+    C : np.ndarray(ns, nt),
+        cost matrix
+    i : number int,
+        picked number i
 
     Returns
     -------
-        coordinate gradient : np.ndarray(nt,)
+
+    coordinate gradient : np.ndarray(nt,)
     '''
 
     r = c[i,:] - v
@@ -44,6 +46,7 @@ def averaged_sgd(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
 
     Parameters
     ----------
+
     epsilon : float number,
         Regularization term > 0
     mu : np.ndarray(ns,),
@@ -64,9 +67,11 @@ def averaged_sgd(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
 
     Returns
     -------
+
     ave_v : np.ndarray(nt,)
         optimization vector
     '''
+
     cur_v = np.zeros(n_target)
     ave_v = np.zeros(n_target)
     for cur_iter in range(nb_iter):
@@ -83,6 +88,7 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
     Parameters
     ----------
+
     epsilon : float
         regularization term > 0
     nu : np.ndarray(nt,)
@@ -98,8 +104,10 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
     Returns
     -------
+
     u : np.ndarray(ns,)
     """
+
     u = np.zeros(n_source)
     for i in range(n_source):
         r = c[i,:] - v

@@ -11,25 +11,27 @@ import time
 
 def coordinate_gradient(eps, nu, v, C, i):
     '''
-    Compute the coordinate gradient update for regularized discrete distributions
-        for (i, :)
+    Compute the coordinate gradient update for regularized discrete
+        distributions for (i, :)
 
     Parameters
     ----------
-        epsilon : float number,
-            Regularization term > 0
-        nu : np.ndarray(nt,),
-            target measure
-        v : np.ndarray(nt,),
-            optimization vector
-        C : np.ndarray(ns, nt),
-            cost matrix
-        i : number int,
-            picked number i
+
+    epsilon : float number,
+        Regularization term > 0
+    nu : np.ndarray(nt,),
+        target measure
+    v : np.ndarray(nt,),
+        optimization vector
+    C : np.ndarray(ns, nt),
+        cost matrix
+    i : number int,
+        picked number i
 
     Returns
     -------
-        coordinate gradient : np.ndarray(nt,)
+
+    coordinate gradient : np.ndarray(nt,)
     '''
 
     r = c[i,:] - v
@@ -45,39 +47,43 @@ def sag(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
 
     Parameters
     ----------
-        epsilon : float number,
-            Regularization term > 0
-        mu : np.ndarray(ns,),
-            source measure
-        nu : np.ndarray(nt,),
-            target measure
-        C : np.ndarray(ns, nt),
-            cost matrix
-        n_source : int number
-            size of the source measure
-        n_target : int number
-            size of the target measure
-        nb_iter : int number
-            number of iteration
-        lr : float number
-            learning rate
+
+    epsilon : float number,
+        Regularization term > 0
+    mu : np.ndarray(ns,),
+        source measure
+    nu : np.ndarray(nt,),
+        target measure
+    C : np.ndarray(ns, nt),
+        cost matrix
+    n_source : int number
+        size of the source measure
+    n_target : int number
+        size of the target measure
+    nb_iter : int number
+        number of iteration
+    lr : float number
+        learning rate
 
     Returns
     -------
-        v : np.ndarray(nt,)
-            optimization vector
-    '''
 
-    v = np.zeros(n_target)
-    stored_gradient = np.zeros((n_source, n_target))
-    avg_stored_gradient = np.zeros(n_target)
-    for _ in range(nb_iter):
-        i = np.random.randint(n_source) #SAG over the source points
-        cur_coord_grad = mu[i] * coordinate_gradient(epsilon, nu, v, C, i)
-        avg_stored_gradient += (cur_coord_grad - stored_gradient[i])
-        stored_gradient[i] = cur_coord_grad
-        v += lr * (1./n_source) * avg_stored_gradient #Max --> Ascent
-    return v
+    v : np.ndarray(nt,)
+        dual variable
+    '''
+    if epsilon > 0:
+        v = np.zeros(n_target)
+        stored_gradient = np.zeros((n_source, n_target))
+        sum_stored_gradient = np.zeros(n_target)
+        for _ in range(nb_iter):
+            i = np.random.randint(n_source) #SAG over the source points
+            cur_coord_grad = mu[i] * coordinate_gradient(epsilon, nu, v, C, i)
+            sum_stored_gradient += (cur_coord_grad - stored_gradient[i])
+            stored_gradient[i] = cur_coord_grad
+            v += lr * (1./n_source) * sum_stored_gradient #Max --> Ascent
+        return v
+    else :
+        print("the regularization term should not be 0")
 
 def recovered_u(epsilon, nu, v, C, n_source, n_target):
     """
@@ -85,6 +91,7 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
     Parameters
     ----------
+
     epsilon : float
         regularization term > 0
     nu : np.ndarray(nt,)
@@ -100,6 +107,7 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
     Returns
     -------
+
     u : np.ndarray(ns,)
     """
     u = np.zeros(n_source)
