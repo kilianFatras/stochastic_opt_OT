@@ -39,7 +39,7 @@ def coordinate_gradient(eps, nu, v, C, i):
     khi = exp_v/(np.sum(exp_v)) #= [exp(r_l/eps)*nu[l]/sum_vec for all l]
     return nu - khi #grad
 
-def averaged_sgd(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
+def averaged_sgd_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
     '''
     Compute the ASGD algorithm to solve the regularized semi continuous measures
         optimal transport max problem
@@ -82,8 +82,8 @@ def averaged_sgd(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
         ave_v = (1./k) * cur_v + (1 - 1./k) * ave_v
     return ave_v
 
-def recovered_u(epsilon, nu, v, C, n_source, n_target):
-    """
+def c_transform_entropic(epsilon, nu, v, C, n_source, n_target):
+    '''
     The goal is to recover u from the c-transform
 
     Parameters
@@ -106,7 +106,7 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
     -------
 
     u : np.ndarray(ns,)
-    """
+    '''
 
     u = np.zeros(n_source)
     for i in range(n_source):
@@ -114,6 +114,43 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
         exp_v = np.exp(-r/epsilon) * nu
         u[i] = - epsilon * np.log(np.sum(exp_v))
     return u
+
+def transportation_matrix_entropic(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
+    '''
+    Compute the transportation matrix to solve the regularized discrete measures
+        optimal transport problem
+
+    Parameters
+    ----------
+
+    epsilon : float number,
+        Regularization term > 0
+    mu : np.ndarray(ns,),
+        source measure
+    nu : np.ndarray(nt,),
+        target measure
+    C : np.ndarray(ns, nt),
+        cost matrix
+    n_source : int number
+        size of the source measure
+    n_target : int number
+        size of the target measure
+    nb_iter : int number
+        number of iteration
+    lr : float number
+        learning rate
+
+    Returns
+    -------
+
+    pi : np.ndarray(ns, nt)
+        transportation matrix
+    '''
+
+    opt_v = averaged_sgd_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr)
+    opt_u = c_transform_entropic(epsilon, nu, opt_v, C, n_source, n_target)
+    pi = np.exp((opt_u[:, None] + opt_v[None, :] - c[:, :])/eps) * mu[:, None] * nu[None, :]
+    return pi
 
 if __name__ == '__main__':
 #Constants
@@ -124,28 +161,19 @@ if __name__ == '__main__':
     lr = 0.1
 
 #Initialization
-    mu = np.array([1./n_source for i in range(n_source)])
-    X_source = np.array([i for i in range(n_source)])
-    nu = np.array([1./n_target for i in range(n_target)])
-    Y_target = np.array([2*i for i in range(n_target)])
-    c = np.zeros((len(X_source), len(Y_target)))
-    for i in range(len(X_source)):
-        for j in range(len(Y_target)):
-            c[i][j] = abs(X_source[i] - Y_target[j]) #c(x,y) = |x-y|
+    mu = (1./n_source) * np.ones(n_source)
+    X_source = np.arange(n_source)
+    nu = (1./n_target) * np.ones(n_target)
+    Y_target = np.arange(0, 2 * n_target, 2)
+
+    c = np.abs(X_source[:, None] - Y_target[None, :])
     #print("The cost matrix is : \n", c)
 
 #Check Code
     start_asgd = time.time()
-    opt_v = averaged_sgd(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
-    opt_u = recovered_u(eps, nu, opt_v, c, n_source, n_target)
+    pi = transportation_matrix_entropic(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
     end_asgd = time.time()
-    pi = np.zeros((len(X_source), len(Y_target)))
-    for i in range(n_source):
-        for j in range(n_target):
-            pi[i][j] = np.exp((opt_u[i] + opt_v[j] - c[i,j])/eps) * mu[i] * nu[j]
-    #print(opt_v)
-    #print(opt_u)
-    print(pi)
+    print("The transportation matrix from SAG is : \n", pi)
 
 
 ####TEST result from POT library

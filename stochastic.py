@@ -83,6 +83,49 @@ def sag_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
         v += lr * (1./n_source) * sum_stored_gradient #Max --> Ascent
     return v
 
+def averaged_sgd_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
+    '''
+    Compute the ASGD algorithm to solve the regularized semi continuous measures
+        optimal transport max problem
+
+    Parameters
+    ----------
+
+    epsilon : float number,
+        Regularization term > 0
+    mu : np.ndarray(ns,),
+        source measure
+    nu : np.ndarray(nt,),
+        target measure
+    C : np.ndarray(ns, nt),
+        cost matrix
+    n_source : int number
+        size of the source measure
+    n_target : int number
+        size of the target measure
+    nb_iter : int number
+        number of iteration
+    lr : float number
+        learning rate
+
+
+    Returns
+    -------
+
+    ave_v : np.ndarray(nt,)
+        optimization vector
+    '''
+
+    cur_v = np.zeros(n_target)
+    ave_v = np.zeros(n_target)
+    for cur_iter in range(nb_iter):
+        k = cur_iter + 1
+        i = np.random.randint(n_source)
+        cur_coord_grad = coordinate_gradient(epsilon, nu, cur_v, C, i)
+        cur_v += (lr/np.sqrt(k)) * cur_coord_grad #max -> Ascent
+        ave_v = (1./k) * cur_v + (1 - 1./k) * ave_v
+    return ave_v
+
 def c_transform_entropic(epsilon, nu, v, C, n_source, n_target):
     '''
     The goal is to recover u from the c-transform
@@ -115,7 +158,7 @@ def c_transform_entropic(epsilon, nu, v, C, n_source, n_target):
         u[i] = - epsilon * np.log(np.sum(exp_v))
     return u
 
-def transportation_matrix_entropic(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
+def transportation_matrix_entropic(method, epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
     '''
     Compute the transportation matrix to solve the regularized discrete measures
         optimal transport max problem
@@ -123,6 +166,8 @@ def transportation_matrix_entropic(epsilon, mu, nu, C, n_source, n_target, nb_it
     Parameters
     ----------
 
+    methode : str,
+        used method (SAG or ASGD)
     epsilon : float number,
         Regularization term > 0
     mu : np.ndarray(ns,),
@@ -146,8 +191,10 @@ def transportation_matrix_entropic(epsilon, mu, nu, C, n_source, n_target, nb_it
     pi : np.ndarray(ns, nt)
         transportation matrix
     '''
-
-    opt_v = sag_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr)
+    if method.lower() == "sag":
+        opt_v = sag_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr)
+    else :
+        opt_v = averaged_sgd_entropic_transport(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr)
     opt_u = c_transform_entropic(epsilon, nu, opt_v, C, n_source, n_target)
     pi = np.exp((opt_u[:, None] + opt_v[None, :] - c[:,:])/eps) * mu[:, None] * nu[None, :]
     return pi
@@ -159,7 +206,7 @@ if __name__ == '__main__':
     eps = 1
     nb_iter = 10000
     lr = 0.1
-
+    method = "Sag"
 
 #Initialization
     mu = (1./n_source) * np.ones(n_source)
@@ -173,7 +220,7 @@ if __name__ == '__main__':
 #Check Code
     print(np.sum(mu), np.sum(nu))
     start_sag = time.time()
-    pi = transportation_matrix_entropic(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
+    pi = transportation_matrix_entropic(method, eps, mu, nu, c, n_source, n_target, nb_iter, lr)
     end_sag = time.time()
     print("The transportation matrix from ASGD is : \n", pi)
 
