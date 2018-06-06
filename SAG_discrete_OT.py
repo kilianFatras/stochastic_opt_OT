@@ -32,7 +32,6 @@ def coordinate_gradient(eps, nu, v, C, i):
         coordinate gradient : np.ndarray(nt,)
     '''
 
-    exp_v = np.zeros(n_target)
     r = c[i,:] - v
     exp_v = np.exp(-r/eps) * nu
     khi = exp_v/(np.sum(exp_v)) #= [exp(r_l/eps)*nu[l]/sum_vec for all l]
@@ -74,9 +73,9 @@ def sag(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
     avg_stored_gradient = np.zeros(n_target)
     for _ in range(nb_iter):
         i = np.random.randint(n_source) #SAG over the source points
-        cur_stoc_grad = mu[i] * coordinate_gradient(epsilon, nu, v, C, i)
-        avg_stored_gradient += (cur_stoc_grad - stored_gradient[i])
-        stored_gradient[i] = cur_stoc_grad
+        cur_coord_grad = mu[i] * coordinate_gradient(epsilon, nu, v, C, i)
+        avg_stored_gradient += (cur_coord_grad - stored_gradient[i])
+        stored_gradient[i] = cur_coord_grad
         v += lr * (1./n_source) * avg_stored_gradient #Max --> Ascent
     return v
 
@@ -103,7 +102,6 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
     -------
     u : np.ndarray(ns,)
     """
-    exp_v = np.zeros(n_target)
     u = np.zeros(n_source)
     for i in range(n_source):
         r = c[i,:] - v
@@ -114,8 +112,8 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
 if __name__ == '__main__':
 #Constants
-    n_source = 2
-    n_target = 7
+    n_source = 7
+    n_target = 4
     eps = 1
     nb_iter = 10000
     lr = 0.1
@@ -125,7 +123,7 @@ if __name__ == '__main__':
     mu = np.array([1./n_source for i in range(n_source)])
     X_source = np.array([i for i in range(n_source)])
     nu = np.array([1./n_target for i in range(n_target)])
-    Y_target = np.array([i for i in range(n_target)])
+    Y_target = np.array([2*i for i in range(n_target)])
     c = np.zeros((len(X_source), len(Y_target)))
     for i in range(len(X_source)):
         for j in range(len(Y_target)):
@@ -133,7 +131,7 @@ if __name__ == '__main__':
     #print("The cost matrix is : \n", c)
 
 #Check Code
-    #print(np.sum(mu), np.sum(nu))
+    print(np.sum(mu), np.sum(nu))
     start_sag = time.time()
     opt_v = sag(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
     opt_u = recovered_u(eps, nu, opt_v, c, n_source, n_target)
@@ -154,5 +152,5 @@ if __name__ == '__main__':
 
     print("difference of the 2 methods : \n", pi - test)
 
-    print("asgd time : ", start_sag - end_sag)
-    print("sinkhorn time : ", start_sinkhorn - end_sinkhorn)
+    print("asgd time : ", end_sag - start_sag)
+    print("sinkhorn time : ", end_sinkhorn - start_sinkhorn)

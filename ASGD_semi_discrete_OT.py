@@ -32,7 +32,6 @@ def coordinate_gradient(eps, nu, v, C, i):
         coordinate gradient : np.ndarray(nt,)
     '''
 
-    exp_v = np.zeros(n_target)
     r = c[i,:] - v
     exp_v = np.exp(-r/eps) * nu
     khi = exp_v/(np.sum(exp_v)) #= [exp(r_l/eps)*nu[l]/sum_vec for all l]
@@ -73,9 +72,9 @@ def averaged_sgd(epsilon, mu, nu, C, n_source, n_target, nb_iter, lr):
     for cur_iter in range(nb_iter):
         k = cur_iter + 1
         i = np.random.randint(n_source)
-        cur_stoc_grad = coordinate_gradient(epsilon, nu, cur_v, C, i)
-        cur_v += (lr/np.sqrt(k)) * cur_stoc_grad #max -> Ascent
-        ave_v = (1./(k)) * cur_v + (1 - 1./(k)) * ave_v
+        cur_coord_grad = coordinate_gradient(epsilon, nu, cur_v, C, i)
+        cur_v += (lr/np.sqrt(k)) * cur_coord_grad #max -> Ascent
+        ave_v = (1./k) * cur_v + (1 - 1./k) * ave_v
     return ave_v
 
 def recovered_u(epsilon, nu, v, C, n_source, n_target):
@@ -101,7 +100,6 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
     -------
     u : np.ndarray(ns,)
     """
-    exp_v = np.zeros(n_target)
     u = np.zeros(n_source)
     for i in range(n_source):
         r = c[i,:] - v
@@ -111,18 +109,17 @@ def recovered_u(epsilon, nu, v, C, n_source, n_target):
 
 if __name__ == '__main__':
 #Constants
-    n_source = 2
-    n_target = 7
+    n_source = 7
+    n_target = 4
     eps = 1
     nb_iter = 10000
     lr = 0.1
-    bar_H_e = 0
 
 #Initialization
     mu = np.array([1./n_source for i in range(n_source)])
     X_source = np.array([i for i in range(n_source)])
     nu = np.array([1./n_target for i in range(n_target)])
-    Y_target = np.array([i for i in range(n_target)])
+    Y_target = np.array([2*i for i in range(n_target)])
     c = np.zeros((len(X_source), len(Y_target)))
     for i in range(len(X_source)):
         for j in range(len(Y_target)):
@@ -133,6 +130,7 @@ if __name__ == '__main__':
     start_asgd = time.time()
     opt_v = averaged_sgd(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
     opt_u = recovered_u(eps, nu, opt_v, c, n_source, n_target)
+    end_asgd = time.time()
     pi = np.zeros((len(X_source), len(Y_target)))
     for i in range(n_source):
         for j in range(n_target):
@@ -140,7 +138,7 @@ if __name__ == '__main__':
     #print(opt_v)
     #print(opt_u)
     print(pi)
-    end_asgd = time.time()
+
 
 ####TEST result from POT library
     start_sinkhorn = time.time()
@@ -150,5 +148,5 @@ if __name__ == '__main__':
 
     print("difference of the 2 methods : \n", pi - test)
 
-    print("asgd time : ", start_asgd - end_asgd)
-    print("sinkhorn time : ", start_sinkhorn - end_sinkhorn)
+    print("asgd time : ", end_asgd - start_asgd)
+    print("sinkhorn time : ", end_sinkhorn - start_sinkhorn)
