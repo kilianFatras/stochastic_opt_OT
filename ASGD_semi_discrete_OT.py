@@ -5,6 +5,7 @@
 
 import numpy as np
 import ot
+import matplotlib.pylab as pl
 import time
 
 
@@ -161,28 +162,39 @@ if __name__ == '__main__':
     lr = 0.1
 
 #Initialization
-    mu = (1./n_source) * np.ones(n_source)
+    mu = np.random.random(n_source)
+    mu *= (1./np.sum(mu))
     X_source = np.arange(n_source)
-    nu = (1./n_target) * np.ones(n_target)
-    Y_target = np.arange(0, 2 * n_target, 2)
+    nu = np.random.random(n_target)
+    nu *= (1./np.sum(nu))
+    Y_target = np.arange(0, n_target)
 
     c = np.abs(X_source[:, None] - Y_target[None, :])
     #print("The cost matrix is : \n", c)
 
 #Check Code
     start_asgd = time.time()
-    pi = transportation_matrix_entropic(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
+    asgd_pi = transportation_matrix_entropic(eps, mu, nu, c, n_source, n_target, nb_iter, lr)
     end_asgd = time.time()
-    print("The transportation matrix from SAG is : \n", pi)
+    print("The transportation matrix from SAG is : \n", asgd_pi)
 
 
 ####TEST result from POT library
     start_sinkhorn = time.time()
-    test = ot.sinkhorn(mu, nu, c, 1)
+    sinkhorn_pi = ot.sinkhorn(mu, nu, c, 1)
     end_sinkhorn = time.time()
-    print("According to sinkhorn and POT, the transportation matrix is : \n", test)
+    print("According to sinkhorn and POT, the transportation matrix is : \n", sinkhorn_pi)
 
-    print("difference of the 2 methods : \n", pi - test)
+    print("difference of the 2 methods : \n", asgd_pi - sinkhorn_pi)
 
     print("asgd time : ", end_asgd - start_asgd)
     print("sinkhorn time : ", end_sinkhorn - start_sinkhorn)
+
+#### Plot Results
+    pl.figure(4, figsize=(5, 5))
+    ot.plot.plot1D_mat(mu, nu, asgd_pi, 'OT matrix ASGD')
+    pl.show()
+
+    pl.figure(4, figsize=(5, 5))
+    ot.plot.plot1D_mat(mu, nu, sinkhorn_pi, 'OT matrix Sinkhorn')
+    pl.show()
