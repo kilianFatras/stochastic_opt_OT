@@ -10,30 +10,32 @@ import ot
 
 
 def partial_gradient_dF_du(M, reg, u, v, batch_u, batch_v):
-    '''Computes the partial gradient of F_\W_varepsilon
+    '''
+    Computes the partial gradient of F_\W_varepsilon
 
-        Compute the partial gradient of the dual problem:
-        ..Math:
-            \forall i in batch_u,
-                grad_U_i = 1 + sum_{j in batch_v} exp((u_i + v_j - M_{i,j})/reg)
+    Compute the partial gradient of the dual problem:
+    ..Math:
+        \forall i in batch_u,
+            grad_U_i = 1 * batch_size -
+                        sum_{j in batch_v} exp((u_i + v_j - M_{i,j})/reg)
 
-        where :
-        - M is the (ns,nt) metric cost matrix
-        - u, v are dual variables in R^ixR^J
-        - reg is the regularization term
-        - batch_u and batch_v are list of index
+    where :
+    - M is the (ns,nt) metric cost matrix
+    - u, v are dual variables in R^ixR^J
+    - reg is the regularization term
+    - batch_u and batch_v are list of index
 
     Parameters
     ----------
 
-    reg : float bmber,
+    reg : float number,
         Regularization term > 0
-    a : np.ndarray(ns,),
-        source measure
-    b : np.ndarray(nt,),
-        target measure
-    C : np.ndarray(ns, nt),
+    M : np.ndarray(ns, nt),
         cost matrix
+    u : np.ndarray(ns,)
+        dual variable
+    v : np.ndarray(nt,)
+        dual variable
     batch_u : np.ndarray(bs,)
         batch of index of u
     batch_v : np.ndarray(bs,)
@@ -43,54 +45,57 @@ def partial_gradient_dF_du(M, reg, u, v, batch_u, batch_v):
     -------
 
     grad : np.ndarray(ns,)
-        partial grad_u of F
+        partial grad F in u
     '''
 
     grad_u = np.zeros(np.shape(M)[0])
-    grad_u[batch_u] = 1
+    grad_u[batch_u] = batch_size
     for j in batch_v:
         grad_u[batch_u] -= np.exp((u[batch_u] + v[j] - M[batch_u, j])/reg)
     return grad_u
 
 def partial_gradient_dF_dv(M, reg, u, v, batch_u, batch_v):
-    '''Computes the partial gradient of F_\W_varepsilon
+    '''
+    Computes the partial gradient of F_\W_varepsilon
 
-        Compute the partial gradient of the dual problem:
-        ..Math:
-            \forall j in batch_v,
-                grad_U_j = 1 + sum_{i in batch_u} exp((u_i + v_j - M_{i,j})/reg)
+    Compute the partial gradient of the dual problem:
+    ..Math:
+        \forall j in batch_v,
+            grad_U_j = 1 * batch_size -
+                        sum_{i in batch_u} exp((u_i + v_j - M_{i,j})/reg)
 
-        where :
-        - M is the (ns,nt) metric cost matrix
-        - u, v are dual variables in R^ixR^J
-        - reg is the regularization term
-        - batch_u and batch_v are list of index
+    where :
+    - M is the (ns,nt) metric cost matrix
+    - u, v are dual variables in R^ixR^J
+    - reg is the regularization term
+    - batch_u and batch_v are list of index
 
-        Parameters
-        ----------
+    Parameters
+    ----------
 
-        reg : float bmber,
-            Regularization term > 0
-        a : np.ndarray(ns,),
-            source measure
-        b : np.ndarray(nt,),
-            target measure
-        C : np.ndarray(ns, nt),
-            cost matrix
-        batch_u : np.ndarray(bs,)
-            batch of index of u
-        batch_v : np.ndarray(bs,)
-            batch of index of v
+    reg : float number,
+        Regularization term > 0
+    M : np.ndarray(ns, nt),
+        cost matrix
+    u : np.ndarray(ns,)
+        dual variable
+    v : np.ndarray(nt,)
+        dual variable
+    batch_u : np.ndarray(bs,)
+        batch of index of u
+    batch_v : np.ndarray(bs,)
+        batch of index of v
 
-        Returns
-        -------
+    Returns
+    -------
 
-        grad : np.ndarray(ns,)
-            partial grad_u of F
+    grad : np.ndarray(ns,)
+        partial grad F in v
+
     '''
 
     grad_v = np.zeros(np.shape(M)[1])
-    grad_v[batch_v] = 1
+    grad_v[batch_v] = batch_size
     for i in batch_u:
         grad_v[batch_v] -= np.exp((u[i] + v[batch_v] - M[i, batch_v])/reg)
     return grad_v
@@ -104,19 +109,15 @@ def sgd_entropic_regularization(M, reg, batch_size, numItermax, lr):
     Parameters
     ----------
 
-    reg : float bmber,
-        Regularization term > 0
-    a : np.ndarray(ns,),
-        source measure
-    b : np.ndarray(nt,),
-        target measure
-    C : np.ndarray(ns, nt),
+    M : np.ndarray(ns, nt),
         cost matrix
-    batch_size : int bmber
+    reg : float number,
+        Regularization term > 0
+    batch_size : int number
         size of the batch
-    numItermax : int bmber
-        bmber of iteration
-    lr : float bmber
+    numItermax : int number
+        number of iteration
+    lr : float number
         learning rate
 
     Returns
@@ -134,8 +135,8 @@ def sgd_entropic_regularization(M, reg, batch_size, numItermax, lr):
         k = np.sqrt(cur_iter + 1)
         batch_u = np.random.choice(n_source, batch_size, replace=False)
         batch_v = np.random.choice(n_target, batch_size, replace=False)
-        u += lr * partial_gradient_dF_du(M, reg, u, v, batch_u, batch_v)
-        v += lr * partial_gradient_dF_dv(M, reg, u, v, batch_u, batch_v)
+        u += (lr/k) * partial_gradient_dF_du(M, reg, u, v, batch_u, batch_v)
+        v += (lr/k) * partial_gradient_dF_dv(M, reg, u, v, batch_u, batch_v)
     return u, v
 
 
@@ -147,21 +148,19 @@ def transportation_matrix_entropic(a, b, M, reg, batch_size, numItermax, lr):
     Parameters
     ----------
 
-    reg : float bmber,
-        Regularization term > 0
     a : np.ndarray(ns,),
         source measure
     b : np.ndarray(nt,),
         target measure
-    C : np.ndarray(ns, nt),
+    M : np.ndarray(ns, nt),
         cost matrix
-    n_source : int bmber
-        size of the source measure
-    n_target : int bmber
-        size of the target measure
-    numItermax : int bmber
-        bmber of iteration
-    lr : float bmber
+    reg : float number,
+        Regularization term > 0
+    batch_size : int number
+        size of the batch
+    numItermax : int number
+        number of iteration
+    lr : float number
         learning rate
 
     Returns
@@ -179,9 +178,9 @@ def transportation_matrix_entropic(a, b, M, reg, batch_size, numItermax, lr):
 
 if __name__ == '__main__':
     n_source = 7
-    n_target = 4
+    n_target = 5
     reg = 1
-    numItermax = 700000
+    numItermax = 100000
     lr = 0.1
     batch_size = 3
 
